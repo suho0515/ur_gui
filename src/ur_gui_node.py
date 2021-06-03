@@ -8,7 +8,7 @@ from PyQt5.QtCore import QTimer, QTime
 
 # ROS
 import rospy
-from ur_dashboard_msgs.srv import GetRobotMode,GetRobotModeResponse
+from ur_dashboard_msgs.srv import GetRobotMode, GetProgramState, GetLoadedProgram, GetSafetyMode
 
 form_class = uic.loadUiType("ur_gui.ui")[0]
 
@@ -26,16 +26,33 @@ class UR_GUI(QMainWindow, form_class) :
 
         # Initialize ROS
         rospy.init_node('ur_gui_node', anonymous=True)
-        self.s = rospy.ServiceProxy('/ur_hardware_interface/dashboard/get_robot_mode', GetRobotMode)
+        self.s_getRobotMode = rospy.ServiceProxy('/ur_hardware_interface/dashboard/get_robot_mode', GetRobotMode)
+        self.s_getProgramState = rospy.ServiceProxy('/ur_hardware_interface/dashboard/program_state', GetProgramState)
+        self.s_getLoadedProgram = rospy.ServiceProxy('/ur_hardware_interface/dashboard/get_loaded_program', GetLoadedProgram)
+        self.s_getSafetyMode = rospy.ServiceProxy('/ur_hardware_interface/dashboard/get_safety_mode', GetSafetyMode)
 
         # Start Timer
         self.timer.start(1000)
 
     def timerEvent(self):
-        resp = self.s()
+        resp = self.s_getRobotMode()
         mode = resp.robot_mode.mode
         answer = resp.answer
         self.label_robotMode.setText(answer)
+
+        resp = self.s_getProgramState()
+        answer = resp.state.state
+        answer = "Program state: " + answer
+        self.label_programState.setText(answer)
+
+        resp = self.s_getLoadedProgram()
+        answer = resp.answer
+        self.label_loadedProgram.setText(answer)
+
+        resp = self.s_getSafetyMode()
+        answer = resp.answer
+        self.label_safetyMode.setText(answer)
+
 
 
 if __name__ == '__main__':
