@@ -65,7 +65,7 @@
     </property>
    </widget>
   </widget>
-  <widget class="QPushButton" name="pushButton_robotReadyStop">
+  <widget class="QPushButton" name="pushButton_robotRunStop">
    <property name="geometry">
     <rect>
      <x>420</x>
@@ -75,10 +75,10 @@
     </rect>
    </property>
    <property name="text">
-    <string>Robot Stop</string>
+    <string>Run Robot</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButton_processPlayStop">
+  <widget class="QPushButton" name="pushButton_processRunStop">
    <property name="geometry">
     <rect>
      <x>418</x>
@@ -88,7 +88,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>Process Stop</string>
+    <string>Run Process</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_image">
