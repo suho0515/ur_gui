@@ -29,8 +29,8 @@
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>40</y>
-      <width>261</width>
+      <y>30</y>
+      <width>500</width>
       <height>20</height>
      </rect>
     </property>
@@ -41,8 +41,8 @@
    <widget class="QLabel" name="label_process">
     <property name="geometry">
      <rect>
-      <x>26</x>
-      <y>160</y>
+      <x>20</x>
+      <y>180</y>
       <width>261</width>
       <height>20</height>
      </rect>
@@ -55,7 +55,7 @@
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>100</y>
+      <y>140</y>
       <width>261</width>
       <height>20</height>
      </rect>
@@ -64,8 +64,47 @@
      <string>Endeffector Pos:</string>
     </property>
    </widget>
+   <widget class="QLabel" name="label_programState">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>50</y>
+      <width>500</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Program State: </string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_loadedProgram">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>70</y>
+      <width>500</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Loaded Program:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_safetyMode">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>90</y>
+      <width>500</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Safety Mode:</string>
+    </property>
+   </widget>
   </widget>
-  <widget class="QPushButton" name="pushButton_robotReadyStop">
+  <widget class="QPushButton" name="pushButton_robotRunStop">
    <property name="geometry">
     <rect>
      <x>420</x>
@@ -75,10 +114,10 @@
     </rect>
    </property>
    <property name="text">
-    <string>Robot Stop</string>
+    <string>Run Robot</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButton_processPlayStop">
+  <widget class="QPushButton" name="pushButton_processRunStop">
    <property name="geometry">
     <rect>
      <x>418</x>
@@ -88,7 +127,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>Process Stop</string>
+    <string>Run Process</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_image">
