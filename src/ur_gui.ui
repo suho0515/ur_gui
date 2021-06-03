@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>740</width>
+    <height>415</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <widget class="QGroupBox" name="groupBox_stateMonitor">
+   <property name="geometry">
+    <rect>
+     <x>410</x>
+     <y>170</y>
+     <width>301</width>
+     <height>211</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>State Monitor</string>
+   </property>
+   <widget class="QLabel" name="label_robotMode">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>40</y>
+      <width>261</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Robot Mode: </string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_process">
+    <property name="geometry">
+     <rect>
+      <x>26</x>
+      <y>160</y>
+      <width>261</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Process:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_endeffectorPos">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>100</y>
+      <width>261</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Endeffector Pos:</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QPushButton" name="pushButton_robotReadyStop">
+   <property name="geometry">
+    <rect>
+     <x>420</x>
+     <y>30</y>
+     <width>271</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Robot Stop</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButton_processPlayStop">
+   <property name="geometry">
+    <rect>
+     <x>418</x>
+     <y>90</y>
+     <width>271</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Process Stop</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_image">
+   <property name="geometry">
+    <rect>
+     <x>16</x>
+     <y>26</y>
+     <width>371</width>
+     <height>351</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>ImageLabel</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
