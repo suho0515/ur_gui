@@ -11,11 +11,8 @@ class UR_GUI(QMainWindow, form_class) :
         super(UR_GUI,self).__init__()
         self.setupUi(self)
 
-        self.label_robotMode.setText("This is Label - Change Text")
-
-
 if __name__ == '__main__':
-    rospy.init_node('ros_node', anonymous=True)
+    rospy.init_node('ur_gui_node', anonymous=True)
 
     app = QApplication(sys.argv)
     ur_gui = UR_GUI()
