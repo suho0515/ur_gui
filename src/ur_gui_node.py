@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os.path
 import sys
 
 # PyQt
@@ -10,7 +11,18 @@ from PyQt5.QtCore import QTimer, QTime
 import rospy
 from ur_dashboard_msgs.srv import GetRobotMode, GetProgramState, GetLoadedProgram, GetSafetyMode
 
-form_class = uic.loadUiType("ur_gui.ui")[0]
+# Reading UI File
+def find_data_file(filename):
+    if getattr(sys, 'frozen', False):
+        # The application is frozen
+        datadir = os.path.dirname(sys.executable)
+    else:
+        # The application is not frozen
+        # Change this bit to match where you store your data files:
+        datadir = os.path.dirname(__file__)
+    return os.path.join(datadir, filename)
+
+form_class = uic.loadUiType(find_data_file("ur_gui.ui"))[0]
 
 class UR_GUI(QMainWindow, form_class) :
     def __init__(self) :
@@ -31,8 +43,38 @@ class UR_GUI(QMainWindow, form_class) :
         self.s_getLoadedProgram = rospy.ServiceProxy('/ur_hardware_interface/dashboard/get_loaded_program', GetLoadedProgram)
         self.s_getSafetyMode = rospy.ServiceProxy('/ur_hardware_interface/dashboard/get_safety_mode', GetSafetyMode)
 
+        # Initialize Buttons
+        self.pushButton_robotRunStop.setCheckable(True)
+        self.pushButton_robotRunStop.toggled.connect(self.pushButton_robotRunStop_toggle)
+
+        self.pushButton_processRunStop.setCheckable(True)
+        self.pushButton_processRunStop.toggled.connect(self.pushButton_processRunStop_toggle)
+
         # Start Timer
         self.timer.start(1000)
+
+
+
+
+
+
+
+
+    def pushButton_robotRunStop_toggle(self, checked):
+        if(checked):
+            # Running the Robot
+            self.pushButton_robotRunStop.setText("Stop Robot")
+        else:
+            # Stop the Robot
+            self.pushButton_robotRunStop.setText("Run Robot")
+
+    def pushButton_processRunStop_toggle(self, checked):
+        if(checked):
+            # Running the Process
+            self.pushButton_processRunStop.setText("Stop Process")
+        else:
+            # Stop the Process
+            self.pushButton_processRunStop.setText("Run Process")
 
     def timerEvent(self):
         resp = self.s_getRobotMode()
