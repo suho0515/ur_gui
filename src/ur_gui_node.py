@@ -13,16 +13,63 @@ import rospy
 from ur_dashboard_msgs.srv import GetRobotMode, GetProgramState, GetLoadedProgram, GetSafetyMode, Load
 from std_srvs.srv import Trigger
 
+# Moveit
+import copy
+import moveit_commander
+import moveit_msgs.msg
+import geometry_msgs.msg
+from math import pi
+from std_msgs.msg import String
+from moveit_commander.conversions import pose_to_list
 
 
 
-class TestThread(QThread):
+
+rospy.init_node('ur_gui_node', anonymous=True)
+
+#moveit_commander.roscpp_initialize(sys.argv)
+#robot = moveit_commander.RobotCommander()
+#scene = moveit_commander.PlanningSceneInterface()
+#group = moveit_commander.MoveGroupCommander("manipulator")
+class UR_Thread(QThread):
     # thread custom event
     # gotta name type of data
     threadEvent = QtCore.pyqtSignal(int)
 
+    moveit_commander.roscpp_initialize(sys.argv)
+    robot = moveit_commander.RobotCommander()
+    scene = moveit_commander.PlanningSceneInterface()
+    move_group = moveit_commander.MoveGroupCommander("manipulator")
+    #display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
+    #                                               moveit_msgs.msg.DisplayTrajectory,
+    #                                               queue_size=20)
+
+    # We can get the name of the reference frame for this robot:
+    #planning_frame = move_group.get_planning_frame()
+    #print "============ Planning frame: %s" % planning_frame
+
+    # We can also print the name of the end-effector link for this group:
+    #eef_link = move_group.get_end_effector_link()
+    #print "============ End effector link: %s" % eef_link
+
+    # We can get a list of all the groups in the robot:
+    #group_names = robot.get_group_names()
+    #print "============ Available Planning Groups:", robot.get_group_names()
+
+    # Sometimes for debugging it is useful to print the entire state of the
+    # robot:
+    #print "============ Printing robot state"
+    #print robot.get_current_state()
+    #print ""
+
+    print "============ Printing robot state"
+    print move_group.get_current_pose()
+    print ""
+
+
+
     def __init__(self, parent=None):
-        super(TestThread,self).__init__()
+        super(UR_Thread,self).__init__()
         self.n = 0
         self.main = parent
         self.isRun = False
@@ -71,7 +118,7 @@ class UR_GUI(QMainWindow, form_class) :
 
 
         # Initialize ROS
-        rospy.init_node('ur_gui_node', anonymous=True)
+
         self.s_getRobotMode = rospy.ServiceProxy('/ur_hardware_interface/dashboard/get_robot_mode', GetRobotMode)
         self.s_getProgramState = rospy.ServiceProxy('/ur_hardware_interface/dashboard/program_state', GetProgramState)
         self.s_getLoadedProgram = rospy.ServiceProxy('/ur_hardware_interface/dashboard/get_loaded_program', GetLoadedProgram)
@@ -100,7 +147,7 @@ class UR_GUI(QMainWindow, form_class) :
         self.timer.start(1000)
 
         # Create Thread Instance
-        self.th = TestThread(self)
+        self.th = UR_Thread(self)
 
         # Connect Thread Event
         self.th.threadEvent.connect(self.threadEventHandler)
@@ -122,6 +169,33 @@ class UR_GUI(QMainWindow, form_class) :
     def threadEventHandler(self, n):
         print('Main : threadEvent(self,' + str(n) + ')')
 
+        print "============ Printing robot state"
+        print self.th.move_group.get_current_pose()
+        print ""
+
+        z = self.th.move_group.get_current_pose().pose.position.z
+
+
+
+        #pose_goal = geometry_msgs.msg.Pose()
+        #pose_goal.orientation.x = -0.741903983597
+        #pose_goal.orientation.y = -0.0167735786841
+        #pose_goal.orientation.z = 0.668109844767
+        #pose_goal.orientation.w = 0.0540958547871
+        #pose_goal.position.x = -0.122104521697 # red line      0.2   0.2
+        #pose_goal.position.y = -0.247255641221  # green line  0.15   0.15
+        #if(z > 0.32):
+        #    pose_goal.position.z = 0.30  # blue line   # 0.35   0.6
+        #elif (z < 0.31):
+        #    pose_goal.position.z = 0.33
+        #self.th.move_group.set_pose_target(pose_goal)
+
+        #plan = self.th.move_group.go(wait=True)
+        #move_group.stop()
+        #move_group.clear_pose_targets()
+
+        #rospy.sleep(2)
+
 
 
 
@@ -132,16 +206,17 @@ class UR_GUI(QMainWindow, form_class) :
             resp = self.s_powerOn()
             print(resp)
             print("\n")
-            rate = rospy.Rate(1)
+            # there is certain error about Rate() Function.
+            # I should fix it later.
+            #rate = rospy.Rate(1)
 
             while True:
                 resp = self.s_getRobotMode()
                 self.mode = resp.robot_mode.mode
-                #print(self.mode)
-                rate.sleep()
-
+                print(self.mode)
+                #rate.sleep()
                 if self.mode == 5:
-                    #print("stop")
+                    print("stop")
                     break
 
             resp = self.s_breakRelease()
@@ -151,11 +226,11 @@ class UR_GUI(QMainWindow, form_class) :
             while True:
                 resp = self.s_getRobotMode()
                 self.mode = resp.robot_mode.mode
-                #print(self.mode)
-                rate.sleep()
+                print(self.mode)
+                #rate.sleep()
 
                 if self.mode == 7:
-                    #print("stop")
+                    print("stop")
                     break
 
             resp = self.s_playProgram()
@@ -179,6 +254,7 @@ class UR_GUI(QMainWindow, form_class) :
 
             if not self.th.isRun:
                 print('Main : Begin Thread')
+                self.label_process.setText("Process: UR Thread is Running")
                 self.th.isRun = True
                 self.th.start()
         else:
@@ -187,6 +263,7 @@ class UR_GUI(QMainWindow, form_class) :
 
             if self.th.isRun:
                 print('Main : Stop Thread')
+                self.label_process.setText("Process: UR Thread is Stop")
                 self.th.isRun = False
 
     def timerEvent(self):
@@ -200,10 +277,12 @@ class UR_GUI(QMainWindow, form_class) :
         state = "Program state: " + state
         self.label_programState.setText(state)
 
-        print(state)
+        # there is some bug that the program stop once when it play.
+        # so i set the watchdog that makes program run again when it fails.
+        # print(state)
         if state == "Program state: STOPPED":
             resp = self.s_playProgram()
-            print(resp)
+            #print(resp)
 
         resp = self.s_getLoadedProgram()
         answer = resp.answer
@@ -212,6 +291,20 @@ class UR_GUI(QMainWindow, form_class) :
         resp = self.s_getSafetyMode()
         answer = resp.answer
         self.label_safetyMode.setText(answer)
+
+        px = str(self.th.move_group.get_current_pose().pose.position.x)
+        py = str(self.th.move_group.get_current_pose().pose.position.y)
+        pz = str(self.th.move_group.get_current_pose().pose.position.z)
+        ox = str(self.th.move_group.get_current_pose().pose.orientation.x)
+        oy = str(self.th.move_group.get_current_pose().pose.orientation.y)
+        oz = str(self.th.move_group.get_current_pose().pose.orientation.z)
+        ow = str(self.th.move_group.get_current_pose().pose.orientation.w)
+
+        str_pos = "Endeffector Pose: " + "[" + px + "," + py + "," + pz + "," + ox + "," + oy + "," + oz + "," + ow + "]"
+
+        #print(str_pos)
+
+        self.label_endeffectorPos.setText(str_pos)
 
 
 
