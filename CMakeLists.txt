@@ -1,12 +1,15 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(ur_gui)
 
+
 find_package(catkin REQUIRED COMPONENTS
     rospy
     )
 
 catkin_package(
-    CATKIN_DEPENDS rospy
+    LIBRARIES ${PROJECT_NAME}
+    CATKIN_DEPENDS
+    DEPENDS system_lib
 )
 
 include_directories(
