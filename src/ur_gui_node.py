@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os.path
 import sys
+import unittest
 
 # PyQt
 from PyQt5.QtWidgets import *
@@ -22,24 +23,41 @@ from math import pi
 from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
 
-
+from cartesian_control_msgs.msg import FollowCartesianTrajectoryAction, FollowCartesianTrajectoryGoal, CartesianTrajectoryPoint
+import actionlib
+from ur_msgs.msg import RobotStateRTMsg, IOStates
+from ur_dashboard_msgs.msg import SetModeAction, SetModeGoal, RobotMode
+from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
+import std_msgs.msg
+from scipy.spatial.transform import Rotation
 
 
 rospy.init_node('ur_gui_node', anonymous=True)
 
-#moveit_commander.roscpp_initialize(sys.argv)
-#robot = moveit_commander.RobotCommander()
-#scene = moveit_commander.PlanningSceneInterface()
-#group = moveit_commander.MoveGroupCommander("manipulator")
+ALL_CONTROLLERS = [
+        "scaled_pos_joint_traj_controller",
+        "pos_joint_traj_controller",
+        "scaled_vel_joint_traj_controller",
+        "vel_joint_traj_controller",
+        "joint_group_vel_controller",
+        "forward_joint_traj_controller",
+        "forward_cartesian_traj_controller",
+        "twist_controller",
+        "pose_based_cartesian_traj_controller",
+        "joint_based_cartesian_traj_controller",
+        ]
+
 class UR_Thread(QThread):
     # thread custom event
     # gotta name type of data
     threadEvent = QtCore.pyqtSignal(int)
 
-    moveit_commander.roscpp_initialize(sys.argv)
-    robot = moveit_commander.RobotCommander()
-    scene = moveit_commander.PlanningSceneInterface()
-    move_group = moveit_commander.MoveGroupCommander("manipulator")
+
+    #moveit_commander.roscpp_initialize(sys.argv)
+    #robot = moveit_commander.RobotCommander()
+    #scene = moveit_commander.PlanningSceneInterface()
+    #move_group = moveit_commander.MoveGroupCommander("manipulator")
+
     #display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
     #                                               moveit_msgs.msg.DisplayTrajectory,
     #                                               queue_size=20)
@@ -62,9 +80,9 @@ class UR_Thread(QThread):
     #print robot.get_current_state()
     #print ""
 
-    print "============ Printing robot state"
-    print move_group.get_current_pose()
-    print ""
+    #print "============ Printing robot state"
+    #print move_group.get_current_pose()
+    #print ""
 
 
 
@@ -84,6 +102,8 @@ class UR_Thread(QThread):
 
             self.n += 1
             self.sleep(1)
+
+
 
 
 
@@ -143,6 +163,46 @@ class UR_GUI(QMainWindow, form_class) :
         self.pushButton_processRunStop.setCheckable(True)
         self.pushButton_processRunStop.toggled.connect(self.pushButton_processRunStop_toggle)
 
+
+
+        timeout = rospy.Duration(30)
+
+        self.set_mode_client = actionlib.SimpleActionClient(
+            '/ur_hardware_interface/set_mode', SetModeAction)
+        try:
+            self.set_mode_client.wait_for_server(timeout)
+            print("set mode action client is on")
+        except rospy.exceptions.ROSException as err:
+            self.fail(
+                "Could not reach set_mode action. Make sure that the driver is actually running."
+                " Msg: {}".format(err))
+
+        self.cartesian_trajectory_client = actionlib.SimpleActionClient(
+            '/pose_based_cartesian_traj_controller/follow_cartesian_trajectory', FollowCartesianTrajectoryAction)
+        try:
+            self.cartesian_trajectory_client.wait_for_server(timeout)
+            print("follow cartesian trajectory action client is on")
+        except rospy.exceptions.ROSException as err:
+            self.fail(
+                "Could not reach cartesian controller action. Make sure that the driver is actually running."
+                " Msg: {}".format(err))
+
+        self.switch_controllers_client = rospy.ServiceProxy('/controller_manager/switch_controller',
+                SwitchController)
+        try:
+            self.switch_controllers_client.wait_for_service(timeout)
+            print("controller switch service is on")
+        except rospy.exceptions.ROSException as err:
+            self.fail(
+                "Could not reach controller switch service. Make sure that the driver is actually running."
+                " Msg: {}".format(err))
+
+        self.script_publisher = rospy.Publisher("/ur_hardware_interface/script_command", std_msgs.msg.String, queue_size=1)
+
+
+
+
+
         # Start Timer
         self.timer.start(1000)
 
@@ -151,6 +211,20 @@ class UR_GUI(QMainWindow, form_class) :
 
         # Connect Thread Event
         self.th.threadEvent.connect(self.threadEventHandler)
+
+    def fb_callback(feedback):
+        rospy.loginfo("Feedback:%s" % str(feedback))
+
+    def switch_on_controller(self, controller_name):
+        """Switches on the given controller stopping all other known controllers with best_effort
+        strategy."""
+        srv = SwitchControllerRequest()
+        srv.stop_controllers = ALL_CONTROLLERS
+        srv.start_controllers = [controller_name]
+        srv.strictness = SwitchControllerRequest.BEST_EFFORT
+        result = self.switch_controllers_client(srv)
+        print(result)
+
 
     @pyqtSlot()
     def threadStart(self):
@@ -169,11 +243,63 @@ class UR_GUI(QMainWindow, form_class) :
     def threadEventHandler(self, n):
         print('Main : threadEvent(self,' + str(n) + ')')
 
-        print "============ Printing robot state"
-        print self.th.move_group.get_current_pose()
-        print ""
+        self.threadStop()
 
-        z = self.th.move_group.get_current_pose().pose.position.z
+        #self.script_publisher.publish("movej([1, -1.7, -1.7, -1, -1.57, -2])")
+
+        self.switch_on_controller("pose_based_cartesian_traj_controller")
+
+        goal = FollowCartesianTrajectoryGoal()
+
+        point = CartesianTrajectoryPoint()
+
+
+        point.pose.position.x = 0.0 # red line      0.2   0.2
+        point.pose.position.y = 0.300  # green line  0.15   0.15
+        #if(z > 0.32):
+        point.pose.position.z = 0.200  # blue line   # 0.35   0.6
+        #elif (z < 0.31):
+        #    point.pose.position.z = 0.33
+
+        rot = Rotation.from_euler('xyz', [180.0, 0.0, 0.0], degrees=True)
+
+        rot_quat = rot.as_quat()
+        print(rot_quat)
+
+
+        point.pose.orientation.x = rot_quat[0]
+        point.pose.orientation.y = rot_quat[1]
+        point.pose.orientation.z = rot_quat[2]
+        point.pose.orientation.w = rot_quat[3]
+
+        point.time_from_start = rospy.Duration(10.0)
+        goal.trajectory.points.append(point)
+        goal.goal_time_tolerance = rospy.Duration(0.6)
+
+        self.cartesian_trajectory_client.send_goal(goal)
+
+
+        self.cartesian_trajectory_client.wait_for_result()
+        #print(self.cartesian_trajectory_client.get_result())
+
+        rospy.loginfo("Received result SUCCESSFUL")
+
+
+
+
+
+
+
+
+
+
+
+
+        #print "============ Printing robot state"
+        #print self.th.move_group.get_current_pose()
+        #print ""
+
+        #z = self.th.move_group.get_current_pose().pose.position.z
 
 
 
@@ -292,19 +418,19 @@ class UR_GUI(QMainWindow, form_class) :
         answer = resp.answer
         self.label_safetyMode.setText(answer)
 
-        px = str(self.th.move_group.get_current_pose().pose.position.x)
-        py = str(self.th.move_group.get_current_pose().pose.position.y)
-        pz = str(self.th.move_group.get_current_pose().pose.position.z)
-        ox = str(self.th.move_group.get_current_pose().pose.orientation.x)
-        oy = str(self.th.move_group.get_current_pose().pose.orientation.y)
-        oz = str(self.th.move_group.get_current_pose().pose.orientation.z)
-        ow = str(self.th.move_group.get_current_pose().pose.orientation.w)
+        #px = str(self.th.move_group.get_current_pose().pose.position.x)
+        #py = str(self.th.move_group.get_current_pose().pose.position.y)
+        #pz = str(self.th.move_group.get_current_pose().pose.position.z)
+        #ox = str(self.th.move_group.get_current_pose().pose.orientation.x)
+        #oy = str(self.th.move_group.get_current_pose().pose.orientation.y)
+        #oz = str(self.th.move_group.get_current_pose().pose.orientation.z)
+        #ow = str(self.th.move_group.get_current_pose().pose.orientation.w)
 
-        str_pos = "Endeffector Pose: " + "[" + px + "," + py + "," + pz + "," + ox + "," + oy + "," + oz + "," + ow + "]"
+        #str_pos = "Endeffector Pose: " + "[" + px + "," + py + "," + pz + "," + ox + "," + oy + "," + oz + "," + ow + "]"
 
         #print(str_pos)
 
-        self.label_endeffectorPos.setText(str_pos)
+        #self.label_endeffectorPos.setText(str_pos)
 
 
 
