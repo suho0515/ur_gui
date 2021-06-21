@@ -14,14 +14,6 @@ import rospy
 from ur_dashboard_msgs.srv import GetRobotMode, GetProgramState, GetLoadedProgram, GetSafetyMode, Load
 from std_srvs.srv import Trigger
 
-# Moveit
-import copy
-import moveit_commander
-import moveit_msgs.msg
-import geometry_msgs.msg
-from math import pi
-from std_msgs.msg import String
-from moveit_commander.conversions import pose_to_list
 
 from cartesian_control_msgs.msg import FollowCartesianTrajectoryAction, FollowCartesianTrajectoryGoal, CartesianTrajectoryPoint
 import actionlib
@@ -30,7 +22,9 @@ from ur_dashboard_msgs.msg import SetModeAction, SetModeGoal, RobotMode
 from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
 import std_msgs.msg
 from scipy.spatial.transform import Rotation
+import tf2_ros
 
+from math import *
 
 rospy.init_node('ur_gui_node', anonymous=True)
 
@@ -51,39 +45,6 @@ class UR_Thread(QThread):
     # thread custom event
     # gotta name type of data
     threadEvent = QtCore.pyqtSignal(int)
-
-
-    #moveit_commander.roscpp_initialize(sys.argv)
-    #robot = moveit_commander.RobotCommander()
-    #scene = moveit_commander.PlanningSceneInterface()
-    #move_group = moveit_commander.MoveGroupCommander("manipulator")
-
-    #display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
-    #                                               moveit_msgs.msg.DisplayTrajectory,
-    #                                               queue_size=20)
-
-    # We can get the name of the reference frame for this robot:
-    #planning_frame = move_group.get_planning_frame()
-    #print "============ Planning frame: %s" % planning_frame
-
-    # We can also print the name of the end-effector link for this group:
-    #eef_link = move_group.get_end_effector_link()
-    #print "============ End effector link: %s" % eef_link
-
-    # We can get a list of all the groups in the robot:
-    #group_names = robot.get_group_names()
-    #print "============ Available Planning Groups:", robot.get_group_names()
-
-    # Sometimes for debugging it is useful to print the entire state of the
-    # robot:
-    #print "============ Printing robot state"
-    #print robot.get_current_state()
-    #print ""
-
-    #print "============ Printing robot state"
-    #print move_group.get_current_pose()
-    #print ""
-
 
 
     def __init__(self, parent=None):
@@ -145,26 +106,14 @@ class UR_GUI(QMainWindow, form_class) :
         self.s_getSafetyMode = rospy.ServiceProxy('/ur_hardware_interface/dashboard/get_safety_mode', GetSafetyMode)
         
         self.s_loadProgram = rospy.ServiceProxy('/ur_hardware_interface/dashboard/load_program', Load)
-        self.s_powerOn = rospy.ServiceProxy('/ur_hardware_interface/dashboard/power_on', Trigger)
-        self.s_powerOff = rospy.ServiceProxy('/ur_hardware_interface/dashboard/power_off', Trigger)
-        self.s_breakRelease = rospy.ServiceProxy('/ur_hardware_interface/dashboard/brake_release', Trigger)
-        self.s_playProgram = rospy.ServiceProxy('/ur_hardware_interface/dashboard/play', Trigger)
-        self.s_stopProgram = rospy.ServiceProxy('/ur_hardware_interface/dashboard/stop', Trigger)
-
         self.s_loadProgram("/programs/ros.urp")
+
+        self.s_playProgram = rospy.ServiceProxy('/ur_hardware_interface/dashboard/play', Trigger)
 
         resp = self.s_getRobotMode()
         self.mode = resp.robot_mode.mode
         
-        # Initialize Buttons
-        self.pushButton_robotRunStop.setCheckable(True)
-        self.pushButton_robotRunStop.toggled.connect(self.pushButton_robotRunStop_toggle)
-
-        self.pushButton_processRunStop.setCheckable(True)
-        self.pushButton_processRunStop.toggled.connect(self.pushButton_processRunStop_toggle)
-
-
-
+        #---
         timeout = rospy.Duration(30)
 
         self.set_mode_client = actionlib.SimpleActionClient(
@@ -200,7 +149,25 @@ class UR_GUI(QMainWindow, form_class) :
         self.script_publisher = rospy.Publisher("/ur_hardware_interface/script_command", std_msgs.msg.String, queue_size=1)
 
 
+        self.tfBuffer = tf2_ros.Buffer()
+        listener = tf2_ros.TransformListener(self.tfBuffer)
 
+
+        # Initialize Buttons
+        self.pushButton_robotRunStop.setCheckable(True)
+        self.pushButton_robotRunStop.toggled.connect(self.pushButton_robotRunStop_toggle)
+
+        #self.pushButton_processRunStop.setCheckable(True)
+        self.pushButton_processRunStop.clicked.connect(self.pushButton_processRunStop_clicked)
+
+
+        # Initialize Edit Boxes
+        self.lineEdit_distance_min.setText("0.10")
+        self.lineEdit_distance_max.setText("0.20")
+        self.lineEdit_distance_interval.setText("0.05")
+        self.lineEdit_pitch_min.setText("-30.0")
+        self.lineEdit_pitch_max.setText("30.0")
+        self.lineEdit_pitch_interval.setText("10.0")
 
 
         # Start Timer
@@ -212,8 +179,18 @@ class UR_GUI(QMainWindow, form_class) :
         # Connect Thread Event
         self.th.threadEvent.connect(self.threadEventHandler)
 
-    def fb_callback(feedback):
-        rospy.loginfo("Feedback:%s" % str(feedback))
+
+
+    def set_robot_to_mode(self, target_mode):
+        goal = SetModeGoal()
+        goal.target_robot_mode = target_mode
+        goal.play_program = True # we use headless mode during tests
+        # This might be a bug to hunt down. We have to reset the program before calling `resend_robot_program`
+        goal.stop_program = False
+
+        self.set_mode_client.send_goal(goal)
+        self.set_mode_client.wait_for_result()
+        return self.set_mode_client.get_result().success
 
     def switch_on_controller(self, controller_name):
         """Switches on the given controller stopping all other known controllers with best_effort
@@ -225,6 +202,41 @@ class UR_GUI(QMainWindow, form_class) :
         result = self.switch_controllers_client(srv)
         print(result)
 
+    def move_cartesian(self,x,y,z,rx,ry,rz,long_movement):
+
+        goal = FollowCartesianTrajectoryGoal()
+
+        point = CartesianTrajectoryPoint()
+
+
+        point.pose.position.x = x # red line      0.2   0.2
+        point.pose.position.y = y  # green line  0.15   0.15
+        point.pose.position.z = z  # blue line   # 0.35   0.6
+
+        rot = Rotation.from_euler('xyz', [rx, ry, rz], degrees=True)
+        rot_quat = rot.as_quat()
+        #print(rot_quat)
+
+        point.pose.orientation.x = rot_quat[0]
+        point.pose.orientation.y = rot_quat[1]
+        point.pose.orientation.z = rot_quat[2]
+        point.pose.orientation.w = rot_quat[3]
+
+        if long_movement:
+            point.time_from_start = rospy.Duration(5.0)
+        else:
+            point.time_from_start = rospy.Duration(1.0)
+
+        goal.trajectory.points.append(point)
+
+        goal.goal_time_tolerance = rospy.Duration(0.6)
+
+        self.cartesian_trajectory_client.send_goal(goal)
+
+        self.cartesian_trajectory_client.wait_for_result()
+        print(self.cartesian_trajectory_client.get_result())
+
+        rospy.loginfo("Received result SUCCESSFUL")
 
     @pyqtSlot()
     def threadStart(self):
@@ -242,155 +254,91 @@ class UR_GUI(QMainWindow, form_class) :
     @pyqtSlot(int)
     def threadEventHandler(self, n):
         print('Main : threadEvent(self,' + str(n) + ')')
-
+        # Thread works only once
         self.threadStop()
 
-        #self.script_publisher.publish("movej([1, -1.7, -1.7, -1, -1.57, -2])")
+        distance_min = float(self.lineEdit_distance_min.text())
+        distance_max = float(self.lineEdit_distance_max.text())
+        distance_interval = float(self.lineEdit_distance_interval.text())
 
-        self.switch_on_controller("pose_based_cartesian_traj_controller")
+        pitch_min = float(self.lineEdit_pitch_min.text())
+        pitch_max = float(self.lineEdit_pitch_max.text())
+        pitch_interval = float(self.lineEdit_pitch_interval.text())
 
-        goal = FollowCartesianTrajectoryGoal()
+        #print (distance_max-distance_min)
+        #print (distance_max-distance_min)/distance_interval
 
-        point = CartesianTrajectoryPoint()
+        distance_list=[]
+        distance_list.append(distance_min)
 
+        for i in range(int((distance_max-distance_min)/distance_interval)):
+            distance_list.append(distance_min+((i+1)*distance_interval))
 
-        point.pose.position.x = 0.0 # red line      0.2   0.2
-        point.pose.position.y = 0.300  # green line  0.15   0.15
-        #if(z > 0.32):
-        point.pose.position.z = 0.200  # blue line   # 0.35   0.6
-        #elif (z < 0.31):
-        #    point.pose.position.z = 0.33
+        print(distance_list)
 
-        rot = Rotation.from_euler('xyz', [180.0, 0.0, 0.0], degrees=True)
+        pitch_list=[]
+        pitch_list.append(pitch_min)
 
-        rot_quat = rot.as_quat()
-        print(rot_quat)
+        for i in range(int((pitch_max-pitch_min)/pitch_interval)):
+            pitch_list.append(pitch_min+((i+1)*pitch_interval))
 
-
-        point.pose.orientation.x = rot_quat[0]
-        point.pose.orientation.y = rot_quat[1]
-        point.pose.orientation.z = rot_quat[2]
-        point.pose.orientation.w = rot_quat[3]
-
-        point.time_from_start = rospy.Duration(10.0)
-        goal.trajectory.points.append(point)
-        goal.goal_time_tolerance = rospy.Duration(0.6)
-
-        self.cartesian_trajectory_client.send_goal(goal)
+        print(pitch_list)
 
 
-        self.cartesian_trajectory_client.wait_for_result()
-        #print(self.cartesian_trajectory_client.get_result())
+        self.move_cartesian(0.0,0.3,0.1,180.0,0.0,0.0,long_movement=True)
 
-        rospy.loginfo("Received result SUCCESSFUL")
+        for distance in distance_list:
+            long_movement = True
+            for pitch in pitch_list:
+                print(distance)
+                print(pitch)
+                print(radians(pitch))
+                x = distance * cos(radians(90-pitch))
+                z = distance * sin(radians(90-pitch))
+                print(x)
+                print(z)
+                print("\n")
 
+                self.move_cartesian(x,0.3,z,180.0,pitch,0.0,long_movement)
 
+                long_movement = False
 
+        self.move_cartesian(0.0,0.3,0.1,180.0,0.0,0.0,long_movement=True)
 
+        self.pushButton_processRunStop.setText("Run Process")
+        self.label_process.setText("Process: UR Thread is Stoped")
 
-
-
-
-
-
-
-
-        #print "============ Printing robot state"
-        #print self.th.move_group.get_current_pose()
-        #print ""
-
-        #z = self.th.move_group.get_current_pose().pose.position.z
-
-
-
-        #pose_goal = geometry_msgs.msg.Pose()
-        #pose_goal.orientation.x = -0.741903983597
-        #pose_goal.orientation.y = -0.0167735786841
-        #pose_goal.orientation.z = 0.668109844767
-        #pose_goal.orientation.w = 0.0540958547871
-        #pose_goal.position.x = -0.122104521697 # red line      0.2   0.2
-        #pose_goal.position.y = -0.247255641221  # green line  0.15   0.15
-        #if(z > 0.32):
-        #    pose_goal.position.z = 0.30  # blue line   # 0.35   0.6
-        #elif (z < 0.31):
-        #    pose_goal.position.z = 0.33
-        #self.th.move_group.set_pose_target(pose_goal)
-
-        #plan = self.th.move_group.go(wait=True)
-        #move_group.stop()
-        #move_group.clear_pose_targets()
-
-        #rospy.sleep(2)
 
 
 
 
     def pushButton_robotRunStop_toggle(self, checked):
+        # Running the Robot
         if(checked):
-            # Running the Robot
+            self.set_robot_to_mode(RobotMode.POWER_OFF)
+            rospy.sleep(0.5)
+            self.set_robot_to_mode(RobotMode.RUNNING)
+            rospy.sleep(0.5)
+
             self.pushButton_robotRunStop.setText("Stop Robot")
-            resp = self.s_powerOn()
-            print(resp)
-            print("\n")
-            # there is certain error about Rate() Function.
-            # I should fix it later.
-            #rate = rospy.Rate(1)
 
-            while True:
-                resp = self.s_getRobotMode()
-                self.mode = resp.robot_mode.mode
-                print(self.mode)
-                #rate.sleep()
-                if self.mode == 5:
-                    print("stop")
-                    break
-
-            resp = self.s_breakRelease()
-            print(resp)
-            print("\n")
-
-            while True:
-                resp = self.s_getRobotMode()
-                self.mode = resp.robot_mode.mode
-                print(self.mode)
-                #rate.sleep()
-
-                if self.mode == 7:
-                    print("stop")
-                    break
-
-            resp = self.s_playProgram()
-            print(resp)
-            print("\n")
-
-
+        # Stop the Robot
         else:
-            # Stop the Robot
+            self.set_robot_to_mode(RobotMode.POWER_OFF)
+            rospy.sleep(0.5)
+
             self.pushButton_robotRunStop.setText("Run Robot")
-            self.s_powerOff()
 
-            resp = self.s_stopProgram()
-            print(resp)
-            print("\n")
+    def pushButton_processRunStop_clicked(self):
 
-    def pushButton_processRunStop_toggle(self, checked):
-        if(checked):
-            # Running the Process
-            self.pushButton_processRunStop.setText("Stop Process")
+        self.pushButton_processRunStop.setText("Process is Running")
 
-            if not self.th.isRun:
-                print('Main : Begin Thread')
-                self.label_process.setText("Process: UR Thread is Running")
-                self.th.isRun = True
-                self.th.start()
-        else:
-            # Stop the Process
-            self.pushButton_processRunStop.setText("Run Process")
+        if not self.th.isRun:
+            print('Main : Begin Thread')
+            self.label_process.setText("Process: UR Thread is Running")
+            self.th.isRun = True
+            self.th.start()
 
-            if self.th.isRun:
-                print('Main : Stop Thread')
-                self.label_process.setText("Process: UR Thread is Stop")
-                self.th.isRun = False
 
     def timerEvent(self):
         resp = self.s_getRobotMode()
@@ -418,19 +366,21 @@ class UR_GUI(QMainWindow, form_class) :
         answer = resp.answer
         self.label_safetyMode.setText(answer)
 
-        #px = str(self.th.move_group.get_current_pose().pose.position.x)
-        #py = str(self.th.move_group.get_current_pose().pose.position.y)
-        #pz = str(self.th.move_group.get_current_pose().pose.position.z)
-        #ox = str(self.th.move_group.get_current_pose().pose.orientation.x)
-        #oy = str(self.th.move_group.get_current_pose().pose.orientation.y)
-        #oz = str(self.th.move_group.get_current_pose().pose.orientation.z)
-        #ow = str(self.th.move_group.get_current_pose().pose.orientation.w)
+        trans = self.tfBuffer.lookup_transform('base', 'tool0_controller', rospy.Time())
+        #print(trans)
+        px = str(trans.transform.translation.x)
+        py = str(trans.transform.translation.y)
+        pz = str(trans.transform.translation.z)
+        rx = str(trans.transform.rotation.x)
+        ry = str(trans.transform.rotation.y)
+        rz = str(trans.transform.rotation.z)
+        rw = str(trans.transform.rotation.w)
 
-        #str_pos = "Endeffector Pose: " + "[" + px + "," + py + "," + pz + "," + ox + "," + oy + "," + oz + "," + ow + "]"
+        str_pos = "Endeffector Pose: "+ "\n" + "[" + px + "," + "\n" + py + "," + "\n" + pz + "," + "\n" + rx + "," + "\n" + ry + "," + "\n" + rz + "," + "\n" + rw + "]"
 
         #print(str_pos)
 
-        #self.label_endeffectorPos.setText(str_pos)
+        self.label_endeffectorPos.setText(str_pos)
 
 
 
