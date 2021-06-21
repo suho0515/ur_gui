@@ -157,8 +157,8 @@ class UR_GUI(QMainWindow, form_class) :
         self.pushButton_robotRunStop.setCheckable(True)
         self.pushButton_robotRunStop.toggled.connect(self.pushButton_robotRunStop_toggle)
 
-        self.pushButton_processRunStop.setCheckable(True)
-        self.pushButton_processRunStop.toggled.connect(self.pushButton_processRunStop_toggle)
+        #self.pushButton_processRunStop.setCheckable(True)
+        self.pushButton_processRunStop.clicked.connect(self.pushButton_processRunStop_clicked)
 
 
         # Initialize Edit Boxes
@@ -305,8 +305,8 @@ class UR_GUI(QMainWindow, form_class) :
 
         self.move_cartesian(0.0,0.3,0.1,180.0,0.0,0.0,long_movement=True)
 
-
-
+        self.pushButton_processRunStop.setText("Run Process")
+        self.label_process.setText("Process: UR Thread is Stoped")
 
 
 
@@ -329,27 +329,15 @@ class UR_GUI(QMainWindow, form_class) :
 
             self.pushButton_robotRunStop.setText("Run Robot")
 
-    def pushButton_processRunStop_toggle(self, checked):
-        # Running the Process
-        if(checked):
+    def pushButton_processRunStop_clicked(self):
 
-            self.pushButton_processRunStop.setText("Stop Process")
+        self.pushButton_processRunStop.setText("Process is Running")
 
-            if not self.th.isRun:
-                print('Main : Begin Thread')
-                self.label_process.setText("Process: UR Thread is Running")
-                self.th.isRun = True
-                self.th.start()
-
-        # Stop the Process
-        else:
-
-            self.pushButton_processRunStop.setText("Run Process")
-
-            if self.th.isRun:
-                print('Main : Stop Thread')
-                self.label_process.setText("Process: UR Thread is Stop")
-                self.th.isRun = False
+        if not self.th.isRun:
+            print('Main : Begin Thread')
+            self.label_process.setText("Process: UR Thread is Running")
+            self.th.isRun = True
+            self.th.start()
 
 
     def timerEvent(self):
