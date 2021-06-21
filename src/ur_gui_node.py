@@ -24,6 +24,8 @@ import std_msgs.msg
 from scipy.spatial.transform import Rotation
 import tf2_ros
 
+from math import *
+
 rospy.init_node('ur_gui_node', anonymous=True)
 
 ALL_CONTROLLERS = [
@@ -160,9 +162,9 @@ class UR_GUI(QMainWindow, form_class) :
 
 
         # Initialize Edit Boxes
-        self.lineEdit_z_min.setText("0.10")
-        self.lineEdit_z_max.setText("0.20")
-        self.lineEdit_z_interval.setText("0.05")
+        self.lineEdit_distance_min.setText("0.10")
+        self.lineEdit_distance_max.setText("0.20")
+        self.lineEdit_distance_interval.setText("0.05")
         self.lineEdit_pitch_min.setText("-30.0")
         self.lineEdit_pitch_max.setText("30.0")
         self.lineEdit_pitch_interval.setText("10.0")
@@ -200,7 +202,7 @@ class UR_GUI(QMainWindow, form_class) :
         result = self.switch_controllers_client(srv)
         print(result)
 
-    def move_cartesian(self,x,y,z,rx,ry,rz):
+    def move_cartesian(self,x,y,z,rx,ry,rz,long_movement):
 
         goal = FollowCartesianTrajectoryGoal()
 
@@ -220,7 +222,10 @@ class UR_GUI(QMainWindow, form_class) :
         point.pose.orientation.z = rot_quat[2]
         point.pose.orientation.w = rot_quat[3]
 
-        point.time_from_start = rospy.Duration(1.0)
+        if long_movement:
+            point.time_from_start = rospy.Duration(5.0)
+        else:
+            point.time_from_start = rospy.Duration(1.0)
 
         goal.trajectory.points.append(point)
 
@@ -252,24 +257,24 @@ class UR_GUI(QMainWindow, form_class) :
         # Thread works only once
         self.threadStop()
 
-        z_min = float(self.lineEdit_z_min.text())
-        z_max = float(self.lineEdit_z_max.text())
-        z_interval = float(self.lineEdit_z_interval.text())
+        distance_min = float(self.lineEdit_distance_min.text())
+        distance_max = float(self.lineEdit_distance_max.text())
+        distance_interval = float(self.lineEdit_distance_interval.text())
 
         pitch_min = float(self.lineEdit_pitch_min.text())
         pitch_max = float(self.lineEdit_pitch_max.text())
         pitch_interval = float(self.lineEdit_pitch_interval.text())
 
-        #print (z_max-z_min)
-        #print (z_max-z_min)/z_interval
+        #print (distance_max-distance_min)
+        #print (distance_max-distance_min)/distance_interval
 
-        z_list=[]
-        z_list.append(z_min)
+        distance_list=[]
+        distance_list.append(distance_min)
 
-        for i in range(int((z_max-z_min)/z_interval)):
-            z_list.append(z_min+((i+1)*z_interval))
+        for i in range(int((distance_max-distance_min)/distance_interval)):
+            distance_list.append(distance_min+((i+1)*distance_interval))
 
-        print(z_list)
+        print(distance_list)
 
         pitch_list=[]
         pitch_list.append(pitch_min)
@@ -279,60 +284,26 @@ class UR_GUI(QMainWindow, form_class) :
 
         print(pitch_list)
 
-        for i in z_list:
-            for j in pitch_list:
-                print(i)
-                print(j)
-                self.move_cartesian(0.0,0.3,i,180.0,j,0.0)
 
+        self.move_cartesian(0.0,0.3,0.1,180.0,0.0,0.0,long_movement=True)
 
-        #self.move_cartesian(0.0,0.3,0.2,180.0,0.0,0.0)
+        for distance in distance_list:
+            long_movement = True
+            for pitch in pitch_list:
+                print(distance)
+                print(pitch)
+                print(radians(pitch))
+                x = distance * cos(radians(90-pitch))
+                z = distance * sin(radians(90-pitch))
+                print(x)
+                print(z)
+                print("\n")
 
-        #self.move_cartesian(0.0,0.3,0.1,180.0,0.0,0.0)
+                self.move_cartesian(x,0.3,z,180.0,pitch,0.0,long_movement)
 
-        #self.script_publisher.publish("movej([1, -1.7, -1.7, -1, -1.57, -2])")
-        '''
-        self.switch_on_controller("pose_based_cartesian_traj_controller")
+                long_movement = False
 
-        goal = FollowCartesianTrajectoryGoal()
-
-        point = CartesianTrajectoryPoint()
-
-
-        point.pose.position.x = 0.0 # red line      0.2   0.2
-        point.pose.position.y = 0.300  # green line  0.15   0.15
-        #if(z > 0.32):
-        point.pose.position.z = 0.200  # blue line   # 0.35   0.6
-        #elif (z < 0.31):
-        #    point.pose.position.z = 0.33
-
-        rot = Rotation.from_euler('xyz', [180.0, 0.0, 0.0], degrees=True)
-
-        rot_quat = rot.as_quat()
-        #print(rot_quat)
-
-        point.pose.orientation.x = rot_quat[0]
-        point.pose.orientation.y = rot_quat[1]
-        point.pose.orientation.z = rot_quat[2]
-        point.pose.orientation.w = rot_quat[3]
-
-        point.time_from_start = rospy.Duration(10.0)
-
-        goal.trajectory.points.append(point)
-
-        point.pose.position.z = 0.200  # blue line   # 0.35   0.6
-
-        goal.trajectory.points.append(point)
-
-        goal.goal_time_tolerance = rospy.Duration(0.6)
-
-        self.cartesian_trajectory_client.send_goal(goal)
-
-
-        print(self.cartesian_trajectory_client.get_result())
-
-        rospy.loginfo("Received result SUCCESSFUL")
-        '''
+        self.move_cartesian(0.0,0.3,0.1,180.0,0.0,0.0,long_movement=True)
 
 
 

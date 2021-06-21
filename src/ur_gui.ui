@@ -146,7 +146,7 @@
     <string>ImageLabel</string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="lineEdit_z_min">
+  <widget class="QLineEdit" name="lineEdit_distance_min">
    <property name="geometry">
     <rect>
      <x>750</x>
@@ -156,7 +156,7 @@
     </rect>
    </property>
   </widget>
-  <widget class="QLineEdit" name="lineEdit_z_max">
+  <widget class="QLineEdit" name="lineEdit_distance_max">
    <property name="geometry">
     <rect>
      <x>750</x>
@@ -166,7 +166,7 @@
     </rect>
    </property>
   </widget>
-  <widget class="QLineEdit" name="lineEdit_z_interval">
+  <widget class="QLineEdit" name="lineEdit_distance_interval">
    <property name="geometry">
     <rect>
      <x>750</x>
@@ -211,12 +211,12 @@
     <rect>
      <x>750</x>
      <y>30</y>
-     <width>67</width>
+     <width>121</width>
      <height>17</height>
     </rect>
    </property>
    <property name="text">
-    <string>z_min</string>
+    <string>distance_min</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_2">
@@ -224,12 +224,12 @@
     <rect>
      <x>750</x>
      <y>80</y>
-     <width>67</width>
+     <width>121</width>
      <height>17</height>
     </rect>
    </property>
    <property name="text">
-    <string>z_max</string>
+    <string>distance_max</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_3">
@@ -237,12 +237,12 @@
     <rect>
      <x>750</x>
      <y>130</y>
-     <width>67</width>
+     <width>121</width>
      <height>17</height>
     </rect>
    </property>
    <property name="text">
-    <string>z_interval</string>
+    <string>distance_interval</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_4">
