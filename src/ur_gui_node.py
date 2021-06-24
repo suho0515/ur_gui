@@ -31,6 +31,7 @@ from math import *
 import cv2
 import time
 
+from cam import CAM
 
 rospy.init_node('ur_gui_node', anonymous=True)
 
@@ -252,60 +253,6 @@ class UR_Thread(QThread):
         #self.n += 1
         #self.sleep(1)
 
-
-
-class CAM_Thread(QThread):
-    # thread custom event
-    # gotta name type of data
-    threadEvent = QtCore.pyqtSignal(int)
-
-
-
-    def __init__(self, parent=None, ur_gui=None):
-        super(CAM_Thread,self).__init__()
-        self.n = 0
-        self.main = parent
-        self.isRun = False
-        self.ur_gui = ur_gui
-
-        # Image
-        self.cap = cv2.VideoCapture(-1)
-        width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        #self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        self.ur_gui.label_image.resize(width, height)
-        self.img = None
-
-    def save_image(self, num):
-        str_path = '/home/hri/catkin_ws/src/ur_gui/images/'
-
-        str_name = str_path + "image_" + str(num) + ".jpg"
-
-        cv2.imwrite(str_name, self.img)
-
-
-    def run(self):
-        while self.isRun:
-            ret, self.img = self.cap.read()
-
-
-            if not ret:
-                    print("failed to grab frame")
-                    continue
-
-            h,w,c = self.img.shape
-            qImg = QtGui.QImage(self.img.data, w, h, w*c, QtGui.QImage.Format_RGB888)
-            pixmap = QtGui.QPixmap.fromImage(qImg)
-            self.ur_gui.label_image.setPixmap(pixmap)
-
-        self.cap.release()
-
-
-
-
-
-
-
 # Reading UI File
 def find_data_file(filename):
     if getattr(sys, 'frozen', False):
@@ -368,23 +315,25 @@ class UR_GUI(QMainWindow, form_class) :
         self.lineEdit_pitch_max.setText("30.0")
         self.lineEdit_pitch_interval.setText("10.0")
 
+        # Camera Sensor (Thread Class) Initialization
+        self.cam = CAM()
 
-        # Start Timer
-        self.timer.start(1000)
-
-        # Create CAM Thread Instance
-        self.cam_th = CAM_Thread(self,ur_gui=self)
-
-        if not self.cam_th.isRun:
+        if not self.cam.isRun:
             print('Main : Begin CAM Thread')
-            self.cam_th.isRun = True
-            self.cam_th.start()
+            self.cam.isRun = True
+            self.cam.start()
+
+        # Label Image Initialization
+        self.label_image.resize(self.cam.width, self.cam.height)
 
         # Create UR Thread Instance
-        self.th = UR_Thread(self, ur_gui=self, cam_th=self.cam_th)
+        #self.th = UR_Thread(self, ur_gui=self, cam_th=self.cam_th)
 
         # Connect UR Thread Event
-        self.th.threadEvent.connect(self.threadEventHandler)
+        #self.th.threadEvent.connect(self.threadEventHandler)
+
+        # Start Timer
+        self.timer.start(100)
 
 
 
@@ -479,6 +428,15 @@ class UR_GUI(QMainWindow, form_class) :
         #print(str_pos)
 
         self.label_endeffectorPos.setText(str_pos)
+
+        # Image Label
+        if self.cam.isRun == True:
+            h,w,c = self.cam.img.shape
+            qImg = QtGui.QImage(self.cam.img.data, w, h, w*c, QtGui.QImage.Format_RGB888)
+            pixmap = QtGui.QPixmap.fromImage(qImg)
+            self.label_image.setPixmap(pixmap)
+
+
 
 
     def closeEvent(self, event):
