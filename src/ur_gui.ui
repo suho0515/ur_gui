@@ -107,26 +107,26 @@
     </property>
    </widget>
   </widget>
-  <widget class="QPushButton" name="pushButton_robotRunStop">
+  <widget class="QPushButton" name="pushButton_sendPoseList">
    <property name="geometry">
     <rect>
-     <x>750</x>
-     <y>20</y>
+     <x>1070</x>
+     <y>190</y>
      <width>271</width>
-     <height>31</height>
+     <height>61</height>
     </rect>
    </property>
    <property name="text">
-    <string>Run Robot</string>
+    <string>Send Pose List</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButton_processRunStop">
    <property name="geometry">
     <rect>
-     <x>748</x>
-     <y>80</y>
+     <x>740</x>
+     <y>30</y>
      <width>271</width>
-     <height>31</height>
+     <height>101</height>
     </rect>
    </property>
    <property name="text">
@@ -283,6 +283,38 @@
    <property name="text">
     <string>pitch_Interval</string>
    </property>
+  </widget>
+  <widget class="QGroupBox" name="groupBox">
+   <property name="geometry">
+    <rect>
+     <x>1070</x>
+     <y>280</y>
+     <width>271</width>
+     <height>211</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Pose List</string>
+   </property>
+   <widget class="QLabel" name="label_poseList">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>30</y>
+      <width>251</width>
+      <height>171</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>There are No Poses</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+    </property>
+    <property name="wordWrap">
+     <bool>true</bool>
+    </property>
+   </widget>
   </widget>
  </widget>
  <resources/>
