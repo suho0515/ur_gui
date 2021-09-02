@@ -76,7 +76,7 @@ class URState(QThread):
 
             self.trans = self.tfBuffer.lookup_transform('base', 'tool0_controller', rospy.Time())
 
-            rospy.sleep(1)
+            rospy.sleep(1000)
 
 
 
