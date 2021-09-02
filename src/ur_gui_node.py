@@ -14,7 +14,6 @@ import rospy
 
 from mobile_manipulator import MobileManipulator
 
-rospy.init_node('ur_gui_node', anonymous=True)
 
 # Reading UI File
 def find_data_file(filename):
@@ -57,7 +56,7 @@ class UR_GUI(QMainWindow, form_class) :
         self.label_image.resize(self.mobile_manipulator.cam.width, self.mobile_manipulator.cam.height)
 
         # Initialize Timer
-        timeout = rospy.Duration(30)
+        #timeout = rospy.Duration(30)
         self.timer=QTimer()
         self.timer.timeout.connect(self.timerEvent)
 
@@ -172,8 +171,7 @@ class UR_GUI(QMainWindow, form_class) :
 
 
 if __name__ == '__main__':
-
-
+    rospy.init_node('ur_gui_node', anonymous=True)
     app = QApplication(sys.argv)
     ur_gui = UR_GUI()
     ur_gui.show()
