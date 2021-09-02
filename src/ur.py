@@ -74,7 +74,7 @@ class URState(QThread):
             self.loaded_program_resp = self.s_getLoadedProgram()
             self.safety_mode_resp = self.s_getSafetyMode()
 
-            self.trans = self.tfBuffer.lookup_transform('base', 'tool0_controller', rospy.Time())
+            #self.trans = self.tfBuffer.lookup_transform('base', 'tool0_controller', rospy.Time())
 
             rospy.sleep(1000)
 
