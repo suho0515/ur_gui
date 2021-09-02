@@ -200,9 +200,9 @@ class UR():
 
         self.cartesian_trajectory_client.send_goal(goal)
         self.cartesian_trajectory_client.wait_for_result()
-        #print(self.cartesian_trajectory_client.get_result())
+        print(self.cartesian_trajectory_client.get_result())
 
-        #rospy.loginfo("Received result SUCCESSFUL")
+        rospy.loginfo("Received result SUCCESSFUL")
 
 
     def finalize(self):
